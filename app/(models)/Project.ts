@@ -6,6 +6,9 @@ mongoose.Promise = global.Promise;
 const projectSchema = new Schema({
   name: String,
   expType: new Schema({ type: String, expName: String, expURL: String }),
+  startDate: Date,
+  endDate: Date,
+  noEndDate: Boolean,
   media: [String],
   summary: String,
   achievements: [String],

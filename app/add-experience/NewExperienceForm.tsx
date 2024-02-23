@@ -13,6 +13,9 @@ import Image from "next/image";
 type FormData = {
   name: string;
   expType: { type: ExpTypes | string; name?: string; url?: string };
+  startDate: string;
+  endDate: string;
+  noEndDate: boolean;
   media: File[];
   summary: string;
   achievements: string[];
@@ -78,6 +81,9 @@ const NewExperienceForm = () => {
   const defaultFormData: FormData = {
     name: "",
     expType: { type: "" },
+    startDate: "",
+    endDate: "",
+    noEndDate: false,
     media: [],
     summary: "",
     achievements: [""],
@@ -106,26 +112,28 @@ const NewExperienceForm = () => {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     i?: number
   ) => {
-    console.log("Hello");
-
     const name = e.target.name;
-    const value =
-      name === "achievements" && i !== undefined
-        ? formData.achievements.map((achievement, j) =>
+    let value: any;
+    switch (name) {
+      case "achievements":
+        if (i !== undefined)
+          value = formData.achievements.map((achievement, j) =>
             j === i ? e.target.value : achievement
-          )
-        : name === "media"
-        ? [...formData.media, ...e.target.files]
-        : e.target.value;
-    console.log(value);
-
+          );
+        break;
+      case "media":
+        value = [...formData.media, ...e.target.files];
+        e.target.value = "";
+        break;
+      default:
+        value = e.target.value;
+    }
     if (["expName", "expURL"].includes(name))
       setFormData((prev) => ({
         ...prev,
         expType: { ...prev.expType, [name]: value },
       }));
     else setFormData((prev) => ({ ...prev, [name]: value }));
-    e.target.value = ""; // Fires onChange even with same file input
   };
 
   const handleSelectExp = (name: string, value: string) => {
@@ -137,6 +145,17 @@ const NewExperienceForm = () => {
 
   const handleMultiSelect = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: [...prev[name], value] }));
+  };
+
+  const handleToggle = () => {
+    const newVal = !formData.noEndDate;
+    if (newVal)
+      setFormData((prev) => ({
+        ...prev,
+        endDate: "",
+        noEndDate: newVal,
+      }));
+    else setFormData((prev) => ({ ...prev, noEndDate: newVal }));
   };
 
   const handleRemoveImage = (
@@ -214,6 +233,38 @@ const NewExperienceForm = () => {
         value={formData.name}
         onChange={handleChange}
       />
+      <div className="w-full max-w-lg flex">
+        <div className="flex-1">
+          <p>Start Date</p>
+          <input
+            className="form-input input w-auto"
+            type="date"
+            name="startDate"
+            value={formData.startDate}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="flex-1">
+          <p>End Date</p>
+          <input
+            className="form-input input w-auto"
+            type="date"
+            name="endDate"
+            value={formData.endDate}
+            disabled={formData.noEndDate}
+            onChange={handleChange}
+          />
+          <label className="label cursor-pointer justify-start p-0">
+            <input
+              type="checkbox"
+              checked={formData.noEndDate}
+              className="checkbox mr-3"
+              onClick={handleToggle}
+            />
+            <span className="label-text">Present</span>
+          </label>
+        </div>
+      </div>
       <input
         className="form-input input"
         placeholder="GitHub"
