@@ -1,16 +1,19 @@
 import mongoose, { Schema } from "mongoose";
 
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI as string);
 mongoose.Promise = global.Promise;
 
 const projectSchema = new Schema({
   name: String,
-  expType: String,
-  img: String,
-  tags: Array<String>,
-  desc: String,
-  details: Array<String>,
+  expType: new Schema({ type: String, expName: String, expURL: String }),
+  media: [String],
+  summary: String,
+  achievements: [String],
   github: String,
+  link: String,
+  projTypes: [String],
+  languages: [String],
+  libs: [String],
 });
 
 const Project =

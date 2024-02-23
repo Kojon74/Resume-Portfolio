@@ -4,15 +4,20 @@ import Dropdown from "../components/Dropdown";
 import Button from "../components/Button";
 import MultiDropdown from "../components/MultiDropdown";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/navigation";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { storage } from "../../firebase";
+import Image from "next/image";
 
 type FormData = {
   name: string;
   expType: { type: ExpTypes | string; name?: string; url?: string };
-  img: string;
+  media: File[];
   summary: string;
   achievements: string[];
   github: string;
+  link: string;
   projTypes: string[];
   languages: string[];
   libs: string[];
@@ -73,14 +78,17 @@ const NewExperienceForm = () => {
   const defaultFormData: FormData = {
     name: "",
     expType: { type: "" },
-    img: "",
+    media: [],
     summary: "",
     achievements: [""],
     github: "",
+    link: "",
     projTypes: [],
     languages: [],
     libs: [],
   };
+
+  const router = useRouter();
 
   const [formData, setFormData] = useState(defaultFormData);
 
@@ -98,19 +106,26 @@ const NewExperienceForm = () => {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     i?: number
   ) => {
+    console.log("Hello");
+
     const name = e.target.name;
     const value =
       name === "achievements" && i !== undefined
         ? formData.achievements.map((achievement, j) =>
             j === i ? e.target.value : achievement
           )
+        : name === "media"
+        ? [...formData.media, ...e.target.files]
         : e.target.value;
-    if (name in ["expName", "expURL"])
+    console.log(value);
+
+    if (["expName", "expURL"].includes(name))
       setFormData((prev) => ({
         ...prev,
         expType: { ...prev.expType, [name]: value },
       }));
     else setFormData((prev) => ({ ...prev, [name]: value }));
+    e.target.value = ""; // Fires onChange even with same file input
   };
 
   const handleSelectExp = (name: string, value: string) => {
@@ -124,10 +139,43 @@ const NewExperienceForm = () => {
     setFormData((prev) => ({ ...prev, [name]: [...prev[name], value] }));
   };
 
-  const handleSubmit = (e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const handleRemoveImage = (
+    e: MouseEvent<HTMLButtonElement, globalThis.MouseEvent>,
+    i: number
+  ) => {
     e.preventDefault();
+    console.log(formData.media.filter((_, j) => j !== i));
+    setFormData((prev) => ({
+      ...prev,
+      media: prev.media.filter((_, j) => j !== i),
+    }));
+  };
 
-    console.log(formData);
+  const handleSubmit = async (e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.preventDefault();
+    // Upload images and get urls
+    const mediaURLs: string[] = await Promise.all(
+      formData.media.map((media, i) => uploadMedia(formData.name, i, media))
+    );
+    const res = await fetch("/api/Projects", {
+      method: "POST",
+      body: JSON.stringify({ formData: { ...formData, media: mediaURLs } }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to create new project.");
+
+    router.refresh();
+    router.push("/");
+  };
+
+  const uploadMedia = async (name: string, i: number, media: File) => {
+    const storageRef = ref(storage, `${name}/${media.name}`);
+    await uploadBytes(storageRef, media);
+    const url = await getDownloadURL(storageRef);
+    return url;
   };
 
   return (
@@ -164,6 +212,20 @@ const NewExperienceForm = () => {
         placeholder="Experience name"
         name="name"
         value={formData.name}
+        onChange={handleChange}
+      />
+      <input
+        className="form-input input"
+        placeholder="GitHub"
+        name="github"
+        value={formData.github}
+        onChange={handleChange}
+      />
+      <input
+        className="form-input input"
+        placeholder="Link"
+        name="link"
+        value={formData.link}
         onChange={handleChange}
       />
       <textarea
@@ -240,12 +302,40 @@ const NewExperienceForm = () => {
           ))}
         </div>
       )}
-      <label className="form-input form-control w-full">
+      <label className="form-input">
         <div className="label">
           <span className="label-text">Add media</span>
         </div>
-        <input type="file" className="file-input file-input-bordered w-full" />
+        <input
+          name="media"
+          type="file"
+          multiple
+          className="file-input w-full"
+          onChange={handleChange}
+        />
       </label>
+      <div className="w-full max-w-lg flex flex-wrap justify-between">
+        {formData.media.map((media, i) => (
+          <div
+            key={i}
+            className="h-40 w-40 relative rounded-md overflow-hidden my-1"
+          >
+            <Image
+              src={URL.createObjectURL(media)}
+              alt="alt"
+              width={100}
+              height={100}
+              className="h-full w-full object-cover"
+            />
+            <button
+              onClick={(e) => handleRemoveImage(e, i)}
+              className="opacity-0 hover:opacity-100 flex hover:cursor-pointer absolute left-0 top-0 h-full w-full  justify-center items-center bg-slate-500 bg-opacity-50"
+            >
+              <FontAwesomeIcon icon={faTrash} className="text-red-400" />
+            </button>
+          </div>
+        ))}
+      </div>
       <Button title="Submit" onClick={handleSubmit} />
     </form>
   );
