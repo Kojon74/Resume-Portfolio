@@ -11,6 +11,17 @@ type ProjectsType = {
   description: string;
 }[];
 
+const getProjects = async () => {
+  try {
+    const res = await fetch("http://localhost:3000/api/Projects", {
+      cache: "no-store",
+    });
+    return res.json();
+  } catch (error) {
+    console.log("Failed to get projects");
+  }
+};
+
 export default function Home() {
   return (
     <main className="mx-10">

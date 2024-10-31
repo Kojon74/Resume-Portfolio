@@ -13,3 +13,12 @@ export const POST = async (req: any) => {
     return NextResponse.json({ message: "Error", error }, { status: 500 });
   }
 };
+
+export const GET = async () => {
+  try {
+    const projects = await Project.find();
+    return NextResponse.json({ projects }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ message: "Error", error }, { status: 500 });
+  }
+};
